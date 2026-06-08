@@ -228,18 +228,18 @@ def merge_point_clouds(pcd_dir, pose_dir, output_path,start_frame, end_frame, vo
 def main():
     base_dir = "./tunnel"
 
-    # depth_to_pcd(color_dir=os.path.join(base_dir, "color"),
-    #              depth_dir=os.path.join(base_dir, "depth"),
-    #              fx=640.0, fy=640.0, cx=480.0, cy=270.0,
-    #              output_dir=os.path.join(base_dir, "output/pointclouds"))
+    depth_to_pcd(color_dir=os.path.join(base_dir, "color"),
+                 depth_dir=os.path.join(base_dir, "depth"),
+                 fx=640.0, fy=640.0, cx=480.0, cy=270.0,
+                 output_dir=os.path.join(base_dir, "output/pointclouds"))
     
-    # transfrom_pose(poses_file=os.path.join(base_dir, "camera_poses_mm.txt"),
-    #                output_dir=os.path.join(base_dir, "output/poses_colmap"))
+    transfrom_pose(poses_file=os.path.join(base_dir, "camera_poses_mm.txt"),
+                   output_dir=os.path.join(base_dir, "output/poses_colmap"))
 
     merge_point_clouds(
             pcd_dir=os.path.join(base_dir, "output/pointclouds"),
             pose_dir=os.path.join(base_dir, "output/poses_colmap"),
-            output_path=os.path.join(base_dir, "output/new_merged_pcd.ply"),
+            output_path=os.path.join(base_dir, "outputnew_merged_pcd.ply"),
             start_frame=1,
             end_frame=100,
             voxel_size=0.01
