@@ -11,48 +11,34 @@ from PIL import Image
 
 def read_depth_image(filepath):
     """读取EXR文件"""
-    try:
-        # 打开EXR文件
-        exr_file = OpenEXR.InputFile(filepath)
-        
-        # 获取文件头信息
-        header = exr_file.header()
-        dw = header['dataWindow']
-        width = dw.max.x - dw.min.x + 1
-        height = dw.max.y - dw.min.y + 1
-        
-        # 获取通道名称
-        channels = list(header['channels'].keys())
-        
-        # 定义像素类型
-        FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
-        
-        # 读取所有通道
-        channel_data = {}
-        for channel in channels:
-            channel_str = exr_file.channel(channel, FLOAT)
-            channel_array = array.array('f', channel_str)
-            channel_data[channel] = np.array(channel_array, dtype=np.float32)
-            channel_data[channel] = channel_data[channel].reshape(height, width)
-        
-        # 组合通道
-        if 'R' in channels and 'G' in channels and 'B' in channels:
-            # RGB图像（法向图）
-            img = np.stack([channel_data['B'], channel_data['G'], channel_data['R']], axis=-1)
-        elif 'Y' in channels:
-            # 单通道深度图
-            img = channel_data['Y']
-        elif len(channels) == 1:
-            # 单通道
-            img = list(channel_data.values())[0]
-        else:
-            # 多通道，按顺序组合
-            img = np.stack([channel_data[ch] for ch in channels], axis=-1)
-        
-        return img
-        
-    except Exception as e:
-        return None
+    
+    # 打开EXR文件
+    exr_file = OpenEXR.InputFile(filepath)
+    
+    # 获取文件头信息
+    header = exr_file.header()
+    dw = header['dataWindow']
+    width = dw.max.x - dw.min.x + 1
+    height = dw.max.y - dw.min.y + 1
+    
+    # 获取通道名称
+    channels = list(header['channels'].keys())
+    
+    # 定义像素类型
+    FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
+    
+    # 读取所有通道
+    channel_data = {}
+    for channel in channels:
+        channel_str = exr_file.channel(channel, FLOAT)
+        channel_array = array.array('f', channel_str)
+        channel_data[channel] = np.array(channel_array, dtype=np.float32)
+        channel_data[channel] = channel_data[channel].reshape(height, width)
+    img = np.stack([channel_data['B'], channel_data['G'], channel_data['R']], axis=-1)
+    
+    
+    return img
+    
 
 def depth_to_pcd(color_dir, depth_dir, fx, fy, cx, cy, output_dir):
     """
@@ -71,6 +57,7 @@ def depth_to_pcd(color_dir, depth_dir, fx, fy, cx, cy, output_dir):
     exr_files = sorted([f for f in os.listdir(depth_dir) if f.lower().endswith('.exr')])
     for index, filename in enumerate(tqdm(exr_files, desc="EXR to NPY", unit="file")):
         depth_data = read_depth_image(os.path.join(depth_dir, filename))
+    
         if depth_data.ndim == 3:
             depth = depth_data[:, :, 0]
         else:

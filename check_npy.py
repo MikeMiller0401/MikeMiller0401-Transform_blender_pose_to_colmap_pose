@@ -1,7 +1,7 @@
 import numpy as np
 
-a = np.load("tunnel/output/pointcloud_single/0001.npy")
-b = np.load("tunnel/output/pointclouds/0001.npy")
+a = np.load("tunnel/output/depth_npy/0001.npy")
+b = np.load("001.npy")
 
 print("shape:", a.shape, b.shape)
 print("dtype:", a.dtype, b.dtype)
