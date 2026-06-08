@@ -150,4 +150,6 @@ def main():
     
 
 if __name__ == "__main__":
+    print("开始转换深度图为点云...")
+    
     main()
