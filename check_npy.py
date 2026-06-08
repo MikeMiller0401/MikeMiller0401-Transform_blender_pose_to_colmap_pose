@@ -1,7 +1,7 @@
 import numpy as np
 
-a = np.load("tunnel/output/depth_npy/0001.npy")
-b = np.load("001.npy")
+a = np.load("tunnel/output/merged_pcd.npy")
+b = np.load("tunnel/output/new_merged_pcd.npy")
 
 print("shape:", a.shape, b.shape)
 print("dtype:", a.dtype, b.dtype)
