@@ -16,7 +16,7 @@ def read_exr(file_path):
         exr_file = OpenEXR.InputFile(file_path)
         
         # 获取文件头信息
-        header = exr_file.header()
+        header = exr_file.header() #NOTE
         dw = header['dataWindow']
         width = dw.max.x - dw.min.x + 1
         height = dw.max.y - dw.min.y + 1
@@ -27,7 +27,7 @@ def read_exr(file_path):
         # 定义像素类型
         FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
         
-        # 读取所有通道
+        # 读取所有通道 
         channel_data = {}
         for channel in channels:
             channel_str = exr_file.channel(channel, FLOAT)
@@ -52,7 +52,7 @@ def read_exr(file_path):
         return img
         
     except Exception as e:
-        return None
+        return None 
 
 
 def process_folder(input_dir, output_base_dir, data_type='depth'):

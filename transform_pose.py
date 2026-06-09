@@ -73,7 +73,16 @@ def depth_to_pcd(color_dir, depth_dir, fx, fy, cx, cy, output_dir):
         y_3d = (yy - cy) * z / fy
         z_3d = z
 
-        pts = np.stack([x_3d, y_3d, z_3d], axis=-1).reshape(-1, 3)
+        pts = np.stack([x_3d, y_3d, z_3d], axis=-1).reshape(-1, 3) #
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
         i = index + 1
         output_filename = f"{i:04d}.npy"
@@ -222,27 +231,27 @@ def merge_point_clouds(pcd_dir, pose_dir, output_path,start_frame, end_frame, vo
     print(f"同时保存: {npy_path}")
 
     print("\n完成！")
-    return merged_points
+    return merged_points 
     
 
 def main():
     base_dir = "./tunnel"
+    # TODO 衔接所有的输入和输出，避免中间数据save&load
+    transfrom_pose(poses_file=os.path.join(base_dir, "camera_poses_mm.txt"),
+                   output_dir=os.path.join(base_dir, "output/poses_colmap"))
 
     depth_to_pcd(color_dir=os.path.join(base_dir, "color"),
                  depth_dir=os.path.join(base_dir, "depth"),
                  fx=640.0, fy=640.0, cx=480.0, cy=270.0,
                  output_dir=os.path.join(base_dir, "output/pointclouds"))
     
-    transfrom_pose(poses_file=os.path.join(base_dir, "camera_poses_mm.txt"),
-                   output_dir=os.path.join(base_dir, "output/poses_colmap"))
-
     merge_point_clouds(
             pcd_dir=os.path.join(base_dir, "output/pointclouds"),
             pose_dir=os.path.join(base_dir, "output/poses_colmap"),
-            output_path=os.path.join(base_dir, "outputnew_merged_pcd.ply"),
+            output_path=os.path.join(base_dir, "output/new_merged_pcd.ply"),
             start_frame=1,
             end_frame=100,
-            voxel_size=0.01
+            voxel_size=0.01 
         )
 if __name__ == "__main__":
     
