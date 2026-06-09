@@ -18,6 +18,8 @@ def depth_to_pcd(color_dir, depth_dir, fx, fy, cx, cy, output_dir):
     # 创建输出目录
     os.makedirs(output_dir, exist_ok=True)
     
+    
+    
     depth_files = sorted([f for f in os.listdir(depth_dir) if f.endswith(('.png', '.jpg', '.npy'))])
     
     print(f"处理 {len(depth_files)} 个深度图...")

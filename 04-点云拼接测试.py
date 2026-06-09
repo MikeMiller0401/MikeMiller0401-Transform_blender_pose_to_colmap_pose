@@ -100,6 +100,8 @@ def merge_point_clouds(pcd_dir, pose_dir, output_path,
     print(f"体素大小: {voxel_size}m")
     print("-" * 40)
 
+
+
     all_points = []
     processed = 0
 

@@ -37,6 +37,7 @@ def read_exr(file_path):
         
         # 组合通道
         if 'R' in channels and 'G' in channels and 'B' in channels:
+            
             # RGB图像（法向图）
             img = np.stack([channel_data['B'], channel_data['G'], channel_data['R']], axis=-1)
         elif 'Y' in channels:
