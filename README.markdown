@@ -1,32 +1,81 @@
-# This is a README file for COLMAP data
+# Transform Blender Pose to Colmap Pose
 
+这个仓库用于处理相机位姿和深度图像，并将其转换为统一世界坐标系下的三维点云。它适用于包含深度 EXR 序列与相机位姿文件的数据集，例如 tunnel 示例数据。
 
-## About COLMAP DATA
-### A. COLMAP OUTPUT FORMAT
-1. camera.txt & camera.bin: 该文件包含数据集中所有重建相机的内部参数，每行代表一台相机
+## 项目目标
 
-2. frames.txt & frames.bin: 该文件包含帧，其中一帧定义了装置的特定实例，该实例同时暴露了全部或部分传感器
+- 读取相机位姿文件 camera_poses_mm.txt
+- 将位姿从毫米换算为米
+- 完成坐标系转换，适配 Blender / COLMAP 风格的世界坐标系
+- 从深度 EXR 图像反投影为 3D 点
+- 对点云进行体素下采样并融合为最终点云
+- 输出格式为 .ply 和 .npy，便于后续可视化或重建
 
-3. (a) images.txt & images.bin: 该文件包含数据集中所有重建图像的姿态和关键点，每幅图像使用两行数据。前两行定义了第一幅图像的信息，依此类推。图像的重建姿态被指定为从世界坐标系到相机坐标系的投影，该投影使用四元数 (QW, QX, QY, QZ) 和平移向量 (TX, TY, TZ) 表示。四元数采用 Hamilton 约定定义，例如 Eigen 库也使用了这种约定。投影/相机中心的坐标由 -R^t * T 给出，其中 R^t 是由四元数构成的 3x3 旋转矩阵的逆矩阵/转置矩阵，T 是平移向量。图像的局部相机坐标系定义为：从图像上看，X 轴指向右侧，Y 轴指向下方，Z 轴指向前方。
+## 主要脚本
+
+- [Transformed_to_pointclouds.py](Transformed_to_pointclouds.py)
+  - 主要流程脚本
+  - 读取 depth 目录下的 EXR 深度图
+  - 使用相机内参反投影为点云
+  - 生成 merged.ply 和 merged.npy
+
+- [TB_test_support_real_data.py](TB_test_support_real_data.py)
+  - 用于基于已生成的 .npy 点云和相机位姿做拼接与融合
+
+- [code_byHWT](code_byHWT)
+  - 存放早期实验和辅助脚本
+
+## 依赖
+
+建议使用 Python 3.8+。需要安装以下依赖：
+
+```bash
+pip install numpy opencv-python OpenEXR Imath Pillow tqdm
 ```
-# Image list with two lines of data per image:
-#   IMAGE_ID, QW, QX, QY, QZ, TX, TY, TZ, CAMERA_ID, NAME
-#   POINTS2D[] as (X, Y, POINT3D_ID)
-# Number of images: 2, mean observations per image: 2
-1 0.851773 0.0165051 0.503764 -0.142941 -0.737434 1.02973 3.74354 1 P1180141.JPG
-2362.39 248.498 58396 1784.7 268.254 59027 1784.7 268.254 -1
-2 0.851773 0.0165051 0.503764 -0.142941 -0.737434 1.02973 3.74354 1 P1180142.JPG
-1190.83 663.957 23056 1258.77 640.354 59070
+
+如果你的环境中 OpenEXR 安装遇到问题，可以先查看系统是否已安装相关编译依赖，或改用 conda 环境安装。
+
+## 快速开始
+
+1. 准备数据
+   - 将深度图放在 tunnel/depth 目录下
+   - 将相机位姿文件放在 tunnel/camera_poses_mm.txtREADME.markdown
+   - 打开 [Transformed_to_pointclouds.py](Transformed_to_pointclouds.py)
+   - 根据你的数据调整：
+     - base_dir
+     - fx, fy, cx, cy
+     - voxel_size
+     - start_frame, end_frame
+
+3. 运行主脚本
+
+```bash
+python Transformed_to_pointclouds.py
 ```
 
-3. (b) 示例中的两幅图像使用相同的相机模型并共享相同的相机参数 (CAMERA_ID = 1)。图像名称相对于项目中选定的基础图像文件夹。第一幅图像有 3 个关键点，第二幅图像有 2 个关键点，关键点的位置以像素坐标表示。两幅图像都观测到 2 个 3D 点，需要注意的是，第一幅图像的最后一个关键点在重建中没有观测到 3D 点，因为其 3D 点标识符为 -1。
+运行结束后，结果会输出到：
 
-4. points3D.txt: 该文件包含数据集中所有重建的 3D 点的信息，每个点用一条线表示.其中 POINT2D_IDX 定义了 images.txt 文件中关键点的从零开始的索引。误差以重投影误差的像素值表示，并且仅在全局光束法平差后更新。
+- tunnel/output/merged.ply
+- tunnel/output/merged.npy
 
----
-### B. COLMAP camera models
-1. SIMPLE_PINHOLE PINGOLE: 如果您的图像事先未发生畸变，请使用这些相机模型。它们分别使用一个和两个焦距参数。请注意，即使图像未发生畸变，COLMAP 也可能尝试使用更复杂的相机模型来改进相机内参。
+## 说明
 
-2. SIMPLE_RADIAL, RADIAL: 如果相机内参未知且每张图像的相机标定都不同（例如，网络照片），则应选择这两种相机模型。这两种模型都是 OpenCV 模型的简化版本，分别仅使用一个和两个参数来模拟径向畸变效应。
+- `voxel_size` 越小，点云越密；越大，点云越稀疏。
+- 脚本中的位姿变换矩阵是根据当前数据坐标系设定写死的，若换数据集，需要根据实际坐标系重新调整。
+- 如果只想基于已有的 .npy 点云进行融合，可以直接运行 [TB_test_support_real_data.py](TB_test_support_real_data.py)。
 
-3. OPENCV、FULL_OPENCV：如果您事先知道标定参数，请使用这些相机模型。如果您共享多幅图像的内参，也可以尝试使用 COLMAP 来估计参数。请注意，如果每幅图像都有一组独立的内参，则自动参数估计很可能会失败。
+## 目录结构
+
+```text
+.
+├── Transformed_to_pointclouds.py
+├── TB_test_support_real_data.py
+├── code_byHWT/
+├── tunnel/
+│   ├── camera_poses_mm.txt
+│   ├── camera_intrinsics.txt
+│   ├── depth/
+│   └── output/
+└── README.markdown
+```
+
