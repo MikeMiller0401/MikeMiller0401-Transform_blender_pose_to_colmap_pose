@@ -1,3 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+该脚本用于将 tunnel 数据集中的深度 EXR 序列转换为世界坐标系下的融合点云。
+
+主要流程：
+1. 读取并解析相机位姿文件（camera_poses_mm.txt），完成坐标系转换与单位换算（mm -> m）。
+2. 逐帧读取深度 EXR 图像，基于相机内参将像素反投影为三维点。
+3. 对每帧点云做体素下采样，并用对应相机位姿变换到世界坐标系。
+4. 合并所有帧点云后再次下采样，最终输出 merged.ply 与 merged.npy。
+"""
+
 import os
 import cv2
 import numpy as np
@@ -27,19 +38,21 @@ def read_depth_image(filepath):
     # 定义像素类型
     FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
     
-    # 读取所有通道
+    # 读取所有通道，并按 HxW 还原为二维图像
     channel_data = {}
     for channel in channels:
         channel_str = exr_file.channel(channel, FLOAT)
         channel_array = array.array('f', channel_str)
         channel_data[channel] = np.array(channel_array, dtype=np.float32)
         channel_data[channel] = channel_data[channel].reshape(height, width)
+    # Blender/EXR 常见存储顺序为 BGR，这里统一堆叠为 3 通道数组
     img = np.stack([channel_data['B'], channel_data['G'], channel_data['R']], axis=-1)
     
     
     return img   
 
 def transfrom_pose(poses_file):
+    # 将原始相机坐标系转换到目标世界坐标系
     T_world = np.array([
         [1,  0,  0,  0],
         [0,  0,  1,  0],
@@ -55,6 +68,7 @@ def transfrom_pose(poses_file):
     pose_all = {}
     while i < len(lines):
         line = lines[i].strip()
+        # 文件格式: frame <id> 后面紧跟 4 行 4x4 位姿矩阵
         if line.startswith('frame'):
             frame_id = int(line.split()[1])
 
@@ -67,12 +81,14 @@ def transfrom_pose(poses_file):
                 pose_raw = np.array([[float(x) for x in l.split()] for l in pose_lines])
                 R_raw = pose_raw[:3, :3]
                 t_raw = pose_raw[:3, 3]
+                # 原始矩阵可能带缩放，先提取并归一化旋转，再将平移从 mm 转为 m
                 scale = np.linalg.norm(R_raw[:, 0])
                 R = R_raw / scale
                 t = t_raw / 1000.0
                 pose = np.eye(4)
                 pose[:3, :3] = R
                 pose[:3, 3] = t
+                # 左右乘固定变换完成坐标系对齐
                 pose = T_world @ pose @ flip_yz
 
                 # frame_name = f"{frame_id:04d}"
@@ -122,6 +138,7 @@ def voxel_downsample(points, voxel_size):
     for i, voxel_idx in enumerate(voxel_indices):
         key = tuple(voxel_idx)
         if key not in voxel_dict:
+            # 每个体素仅保留第一个点，达到快速降采样目的
             voxel_dict[key] = i
     return points[list(voxel_dict.values())]
 
@@ -148,8 +165,7 @@ def generate_point_clouds(pcd_pose, depth_dir,output_dir, fx, fy, cx, cy, voxel_
     
     exr_files = sorted([f for f in os.listdir(depth_dir) if f.lower().endswith('.exr')])
     
-    for index, filename in enumerate(
-            tqdm(exr_files[start_frame:end_frame], desc="EXR to NPY", unit="file")):
+    for index, filename in enumerate(tqdm(exr_files[start_frame:end_frame], desc="EXR to NPY", unit="file")):
         depth_data = read_depth_image(os.path.join(depth_dir, filename))
     
         if depth_data.ndim == 3:
@@ -160,8 +176,9 @@ def generate_point_clouds(pcd_pose, depth_dir,output_dir, fx, fy, cx, cy, voxel_
         h, w = depth.shape
         x = np.arange(w)
         y = np.arange(h)
-        xx, yy = np.meshgrid(x, y)
+        xx, yy = np.meshgrid(x, y)  # 
         
+        # 深度图反投影: 像素坐标 + 深度 -> 相机坐标系三维点
         z = depth
         x_3d = (xx - cx) * z / fx
         y_3d = (yy - cy) * z / fy
@@ -174,12 +191,15 @@ def generate_point_clouds(pcd_pose, depth_dir,output_dir, fx, fy, cx, cy, voxel_
         positions = pts[:, :3]
         ones = np.ones((positions.shape[0], 1))
         positions_homo = np.hstack([positions, ones])
+        # 位姿字典键从 1 开始时，index 需要偏移 1 对齐 frame_id
         i = index + 1
+        # 将点从相机坐标系变换到世界坐标系
         transfromed_pose = (pose[i] @ positions_homo.T).T[:, :3] 
         all_points.append(transfromed_pose)
         
         if index % 20 == 0:
             print(f"Processed: {index} frames")
+    # 全局合并后再做一次体素下采样，减少重复区域点密度
     print("Start gobal down-sample")   
     merged_points = np.vstack(all_points)
     merged_points = voxel_downsample(merged_points, voxel_size=voxel_size)

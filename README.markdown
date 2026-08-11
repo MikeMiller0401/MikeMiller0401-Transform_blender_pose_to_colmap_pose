@@ -1,4 +1,6 @@
-# README
+# This is a README file for COLMAP data
+
+
 ## About COLMAP DATA
 ### A. COLMAP OUTPUT FORMAT
 1. camera.txt & camera.bin: 该文件包含数据集中所有重建相机的内部参数，每行代表一台相机
